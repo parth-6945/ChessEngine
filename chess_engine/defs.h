@@ -20,7 +20,7 @@ if (!(n)) { \
 }
 #endif
 
-#define NAME "Premove 1.0"
+#define NAME "Premove 1.1"
 #define BRD_SQ_NUM 120
 #define MAXGAMEMOVES 2048
 #define MAXPOSITIONMOVES 256
