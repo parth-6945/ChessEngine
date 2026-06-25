@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "defs.h"
+#include <string.h>
 
 #define FEN1  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
 #define FEN2  "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
@@ -43,18 +44,57 @@
 //     printf("\n");
 // }
 
-int main()
+int main(int argc, char *argv[])
 {
     AllInit();
 
     S_BOARD board[1];
     S_SEARCHINFO info[1];
-    board->PvTable->pTable = NULL;
-    InitPvTable(board->PvTable);
+	info->quit = FALSE;
+	board->HashTable->pTable = NULL;
+	InitHashTable(board->HashTable, 64);
 
-    Uci_Loop(board, info);
+	int ArgNum = 0;
+    
+    for(ArgNum = 0; ArgNum < argc; ++ArgNum)
+	{
+    	if(strncmp(argv[ArgNum], "NoBook", 6) == 0)
+		{
+    		EngineOptions->UseBook = FALSE;
+    		printf("Book Off\n");
+    	}
+    }
 
-    free(board->PvTable->pTable);
+    printf("Welcome to Premove! Type 'premove' for console mode...\n");
+
+	char line[256];
+	while (TRUE) {
+		memset(&line[0], 0, sizeof(line));
+
+		fflush(stdout);
+		if (!fgets(line, 256, stdin))
+			continue;
+		if (line[0] == '\n')
+			continue;
+		if (!strncmp(line, "uci",3)) {
+			Uci_Loop(board, info);
+			if(info->quit == TRUE) break;
+			continue;
+		} else if (!strncmp(line, "xboard",6))	{
+			XBoard_Loop(board, info);
+			if(info->quit == TRUE) break;
+			continue;
+		} else if (!strncmp(line, "premove",7))	{
+			Console_Loop(board, info);
+			if(info->quit == TRUE) break;
+			continue;
+		} else if(!strncmp(line, "quit",4))	{
+			break;
+		}
+	}
+
+	free(board->HashTable->pTable);
+	CleanPolyBook();
 
     return 0;
 }

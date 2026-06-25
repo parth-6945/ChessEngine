@@ -26,12 +26,16 @@ if (!(n)) { \
 #define MAXPOSITIONMOVES 256
 #define MAXDEPTH 64
 
+#define INF_BOUND 30000
+#define ISMATE (INF_BOUND - MAXDEPTH)
+
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 enum {EMPTY, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK};
 enum {FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NONE};
 enum {RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NONE};
 enum {WHITE, BLACK, BOTH};
+enum { UCIMODE, XBOARDMODE, CONSOLEMODE };
 
 enum 
 {
@@ -47,6 +51,8 @@ enum
 
 enum {FALSE, TRUE};
 enum {WKCA = 1, WQCA = 2, BKCA = 4, BQCA = 8};
+
+enum { HFNONE, HFALPHA, HFBETA, HFEXACT };
 
 typedef struct
 {
@@ -64,13 +70,19 @@ typedef struct
 {
     U64 posKey;
     int move;
-} S_PVENTRY;
+    int score;
+    int depth;
+    int flags;
+} S_HASHENTRY;
 
-typedef struct
-{
-    S_PVENTRY *pTable;
+typedef struct {
+    S_HASHENTRY *pTable;
     int numEntries;
-} S_PVTABLE;
+    int newWrite;
+    int overWrite;
+    int hit;
+    int cut;
+} S_HASHTABLE;
 
 
 typedef struct
@@ -111,7 +123,7 @@ typedef struct
     int pList[13][10];
 
     // Principal Variation table
-    S_PVTABLE PvTable[1];
+    S_HASHTABLE HashTable[1];
     int PvArray[MAXDEPTH];
 
     int searchHistory[13][BRD_SQ_NUM];
@@ -135,7 +147,18 @@ typedef struct
 
     float fh;
     float fhf;
+	int nullCut;
+
+	int GAME_MODE;
+	int POST_THINKING;
+
 } S_SEARCHINFO;
+
+typedef struct
+{
+	int UseBook;
+} S_OPTIONS;
+
 
 // Game moves
 
@@ -190,6 +213,8 @@ typedef struct
 #define IsKn(pce) (PieceKnight[(pce)])
 #define IsKi(pce) (PieceKing[(pce)])
 
+#define MIRROR64(sq) Mirror64[(sq)]
+
 // Global variables
 extern int Sq120ToSq64[BRD_SQ_NUM];
 extern int Sq64ToSq120[64];
@@ -217,6 +242,17 @@ extern int PieceKing[13];
 extern int PieceSlides[13];
 extern int PiecePawn[13];
 
+extern int Mirror64[64];
+
+extern U64 FileBBMask[8];
+extern U64 RankBBMask[8];
+
+extern U64 BlackPassedMask[64];
+extern U64 WhitePassedMask[64];
+extern U64 IsolatedMask[64];
+
+extern S_OPTIONS EngineOptions[1];
+
 // Function prototypes
 // From init.c
 extern void AllInit();
@@ -235,6 +271,7 @@ extern int ParseFen(const char *fen, S_BOARD *pos);
 extern void PrintBoard(const S_BOARD *pos);
 extern void UpdateListsMaterial(S_BOARD *pos);
 extern int CheckBoard(const S_BOARD *pos);
+extern void MirrorBoard(S_BOARD *pos);
 
 // From attack.c
 extern int SqAttacked(const int sq, const int side, const S_BOARD *pos);
@@ -251,6 +288,7 @@ extern int SideValid(const int side);
 extern int FileRankValid(const int fr);
 extern int PieceValidEmpty(const int pce);
 extern int PieceValid(const int pce);
+extern void MirrorEvalTest(S_BOARD *pos);
 
 // From movegen.c
 extern void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list);
@@ -261,6 +299,8 @@ extern void GenerateAllCaps(const S_BOARD *pos, S_MOVELIST *list);
 // From makemove.c
 extern int MakeMove(S_BOARD *pos, int move);
 extern void TakeMove(S_BOARD *pos);
+extern void MakeNullMove(S_BOARD *pos);
+extern void TakeNullMove(S_BOARD *pos);
 
 // From Perft.c
 extern void PerftTest(int depth, S_BOARD *pos);
@@ -273,14 +313,25 @@ extern int GetTimeMs();
 extern void ReadInput(S_SEARCHINFO *info);
 
 // From pvtable.c
-extern void InitPvTable(S_PVTABLE *table);
-extern int ProbePvTable(const S_BOARD *pos);
-extern void StorePvMove(const S_BOARD *pos, const int move);
+extern void InitHashTable(S_HASHTABLE *table, const int MB);
+extern int ProbeHashEntry(S_BOARD *pos, int *move, int *score, int alpha, int beta, int depth);
+extern void StoreHashEntry(S_BOARD *pos, const int move, int score, const int flags, const int depth);
+extern int ProbePvMove(const S_BOARD *pos);
 extern int GetPvLine(const int depth, S_BOARD *pos);
-extern void ClearPvTable(S_PVTABLE *table);
+extern void ClearHashTable(S_HASHTABLE *table);
 
 // From evaluate.c
 extern int EvaluatePosition(const S_BOARD *pos);
 
 // From uci.c
 extern void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info);
+
+// From xboard.c
+extern void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info);
+extern void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info);
+
+// From polybooks.c
+extern U64 PolyKeyFromBoard(S_BOARD *pos);
+extern void InitPolyBook();
+extern void CleanPolyBook();
+extern int GetBookMove(S_BOARD *pos);

@@ -89,12 +89,16 @@ void ParsePosition(char* lineIn, S_BOARD *pos)
 
 void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
 {
+    info->GAME_MODE = UCIMODE;
+    EngineOptions->UseBook = FALSE;
+
     setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 
     char line[INPUTBUFFER];
     printf("id name %s\n",NAME);
     printf("id author ParthGargate\n");
+    printf("option name Book type check default false\n");
     printf("uciok\n");
 
     while (TRUE)
@@ -121,6 +125,11 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
         {
             ParseGo(line, info, pos);
         }
+        else if (!strncmp(line, "run", 3))
+        {
+            ParseFen(START_FEN, pos);
+            ParseGo("go infinite", info, pos);
+        }
         else if (!strncmp(line, "quit", 4))
         {
             info->quit = TRUE;
@@ -132,6 +141,13 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
             printf("id author ParthGargate\n");
             printf("uciok\n");
         }
+        else if (!strncmp(line, "setoption name Book value ", 26))
+        {			
+			char *ptrTrue = NULL;
+			ptrTrue = strstr(line, "true");
+			if(ptrTrue != NULL) EngineOptions->UseBook = TRUE;
+            else                EngineOptions->UseBook = FALSE;
+		}
         if(info->quit) break;
     }
 }
