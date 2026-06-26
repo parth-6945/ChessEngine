@@ -51,8 +51,13 @@ int main(int argc, char *argv[])
     S_BOARD board[1];
     S_SEARCHINFO info[1];
 	info->quit = FALSE;
-	board->HashTable->pTable = NULL;
-	InitHashTable(board->HashTable, 64);
+	info->threadNum = 1;
+	HashTable->pTable = NULL;
+	InitHashTable(HashTable, MAX_HASH);
+
+	// TempHashTest(FEN16);
+	// TempHashTest(FEN4);
+	// exit(0);
 
 	int ArgNum = 0;
     
@@ -76,24 +81,19 @@ int main(int argc, char *argv[])
 			continue;
 		if (line[0] == '\n')
 			continue;
-		if (!strncmp(line, "uci",3)) {
+		if (!strncmp(line, "uci",3))
+		{
 			Uci_Loop(board, info);
 			if(info->quit == TRUE) break;
 			continue;
-		} else if (!strncmp(line, "xboard",6))	{
-			XBoard_Loop(board, info);
-			if(info->quit == TRUE) break;
-			continue;
-		} else if (!strncmp(line, "premove",7))	{
-			Console_Loop(board, info);
-			if(info->quit == TRUE) break;
-			continue;
-		} else if(!strncmp(line, "quit",4))	{
+		} 
+		else if(!strncmp(line, "quit",4))
+		{
 			break;
 		}
 	}
 
-	free(board->HashTable->pTable);
+	free(HashTable->pTable);
 	CleanPolyBook();
 
     return 0;
